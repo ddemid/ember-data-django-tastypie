@@ -1,7 +1,7 @@
 ember-data-django-tastypie
 ==========================
 
-Ember Data 1.0 Beta 2 adapter to Django-tastypie API's
+Ember Data 1.0 Beta 3 adapter to Django-tastypie API's
 
 
 ##Usage
