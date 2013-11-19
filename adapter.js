@@ -61,6 +61,13 @@ DS.TasypieSerializer = DS.JSONSerializer.extend({
     resourceUriToId: function (resourceUri){
         return resourceUri.split('/').reverse()[1]
     },
+
+    relationshipToResourceUri: function (relationship, value){
+        if (!value) return value;
+        var store = relationship.type.store, typeKey = relationship.type.typeKey;
+        return store.adapterFor(typeKey).buildURL(typeKey, get(value, 'id'))
+    },
+
     /**
      @method normalizeRelationships
      @private
@@ -116,12 +123,6 @@ DS.TasypieSerializer = DS.JSONSerializer.extend({
     serialize: function (record, options) {
         var json = {};
 
-        // TODO generate resource_uri
-//        var id = get(record, 'id');
-//
-//        if (id) {
-//            json.resource_uri = record.store.adapterFor(record.type.typeKey).buildURL(record.type.typeKey, id);
-//        }
         record.eachAttribute(function (key, attribute) {
             this.serializeAttribute(record, json, key, attribute);
         }, this);
@@ -141,23 +142,27 @@ DS.TasypieSerializer = DS.JSONSerializer.extend({
         merge(data, this.serialize(record, options));
     },
 
+
+
     serializeBelongsTo: function (record, json, relationship) {
         this._super.apply(this, arguments);
         var key = relationship.key;
         key = this.keyForRelationship ? this.keyForRelationship(key, "belongsTo") : key;
-        if (json[key]) {
-            var typeKey = relationship.type.typeKey;
-            json[key] = relationship.type.store.adapterFor(typeKey).buildURL(typeKey, json[key])
-        }
+
+        json[key] = this.relationshipToResourceUri(relationship, get(record, relationship.key));
+
     },
 
     serializeHasMany: function(record, json, relationship) {
         var key = relationship.key;
+        key = this.keyForRelationship ? this.keyForRelationship(key, "belongsTo") : key;
 
         var relationshipType = DS.RelationshipChange.determineRelationshipType(record.constructor, relationship);
 
         if (relationshipType === 'manyToNone' || relationshipType === 'manyToMany') {
-          json[key] = get(record, key).mapBy('id');
+           json[key] = get(record, relationship.key).map(function (next){
+               return this.relationshipToResourceUri(relationship, next);
+           }, this);
           // TODO support for polymorphic manyToNone and manyToMany relationships
         }
     },
